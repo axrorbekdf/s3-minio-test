@@ -14,7 +14,7 @@ class MinioController extends Controller
     }
 
     public function set(Request $request){
-        $data = Storage::disk('minio')->write($request->file('file')->getClientOriginalName(), $request->file('file'));
+        $data = Storage::disk('minio')->write($request->file('file')->getClientOriginalName(), file_get_contents($request->file('file')));
         // $data = Storage::disk('minio')->writeStream($request->file('file')->getClientOriginalName(), $request->file('file'));
         return response()->json($data);
     }
