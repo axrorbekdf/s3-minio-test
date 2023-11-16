@@ -1,0 +1,109 @@
+.evn
+FILESYSTEM_DISK=minio
+
+# Minio config
+MINIO_ENDPOINT="http://10.100.104.125:9005"
+MINIO_KEY=0BTJvPrmVhXuUf521XKI
+MINIO_SECRET=XqxLSYI2ePaDCUsE3mgS6eTgYUckHnBLYeNa57Ng
+MINIO_REGION=us-east-1
+MINIO_BUCKET=test-ka
+
+//////////////////////////////////////////////////////////////////
+config/filesystem.php
+'minio' => [
+            'driver' => 'minio',
+            'endpoint' => env('MINIO_ENDPOINT'),
+            'use_path_style_endpoint' => true,
+            'key' => env('MINIO_KEY'),
+            'secret' => env('MINIO_SECRET'),
+            'region' => env('MINIO_REGION'),
+            'bucket' => env('MINIO_BUCKET'),
+        ],
+
+
+
+composer require league/flysystem-aws-s3-v3
+////////////////////////////////////////////////////////
+Provider
+
+<?php
+
+namespace App\Providers;
+
+use Aws\S3\S3Client;
+use Illuminate\Support\Facades\Storage;
+use League\Flysystem\Filesystem;
+use Illuminate\Support\ServiceProvider;
+use League\Flysystem\AwsS3V3\AwsS3V3Adapter;
+
+class MinioStorageServiceProvider extends ServiceProvider
+{
+    /**
+     * Bootstrap the application services.
+     *
+     * @return void
+     */
+    public function boot()
+    {
+        Storage::extend('minio', function ($app, $config) {
+          $client = new S3Client([
+              'credentials' => [
+                  'key'    => $config["key"],
+                  'secret' => $config["secret"]
+              ],
+              'region'      => $config["region"],
+              'version'     => "latest",
+              'bucket_endpoint' => false,
+              'use_path_style_endpoint' => true,
+              'endpoint'    => $config["endpoint"],
+          ]);
+          $options = [
+              'override_visibility_on_copy' => true
+          ];
+          return new Filesystem(new AwsS3V3Adapter($client, $config["bucket"], '',null,null, $options));
+      });
+    }
+
+    /**
+     * Register the application services.
+     *
+     * @return void
+     */
+    public function register()
+    {
+
+    }
+}
+
+
+////////////////////////////////////////////////
+
+api.php
+
+Route::get('get', [MinioController::class, 'get']);
+Route::post('set', [MinioController::class, 'set']);
+
+controller
+class MinioController extends Controller
+{
+     public function get(){
+        $data = Storage::disk('minio')->publicUrl('hello.json');
+        return response()->json($data);
+    }
+
+    public function set(){
+        $data = Storage::disk('minio')->write('hello.json', '{"hello": "world"}');
+        return response()->json($data);
+    }
+}
+
+
+
+Download server
+https://min.io/download#/windows
+
+Serverni yuklab olib biron papkaga joylab shu papkani power orqali ochib quyidagi komandani run qilish kerak
+minio server --address :9005 /tmp/minio
+
+info
+https://laravel-news.com/minio-s3-compliant-storage
